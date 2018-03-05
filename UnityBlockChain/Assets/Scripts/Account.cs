@@ -77,7 +77,7 @@ public class Account : MonoBehaviour
             if (RetrieveAddressFromKeystore())
             {
                 // OK
-                Debug.Log(accountAddress);
+                GetNexiumBalance();
                 Canvas.SetActive(false);
                 //LobbyManager.instance.Activate("Account", CreateBlocky());
             }
