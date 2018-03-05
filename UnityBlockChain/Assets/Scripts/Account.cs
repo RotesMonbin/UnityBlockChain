@@ -77,8 +77,9 @@ public class Account : MonoBehaviour
             if (RetrieveAddressFromKeystore())
             {
                 // OK
+                Debug.Log(accountAddress);
                 Canvas.SetActive(false);
-                LobbyManager.instance.Activate("Account", CreateBlocky());
+                //LobbyManager.instance.Activate("Account", CreateBlocky());
             }
             else
             {
@@ -88,7 +89,7 @@ public class Account : MonoBehaviour
         else
         {
             // No keystore
-            LobbyManager.instance.Canvas.SetActive(false);
+            //LobbyManager.instance.Canvas.SetActive(false);
             Canvas.SetActive(true);
             Canvas.transform.Find("LinkMethod").gameObject.SetActive(true);
             Canvas.transform.Find("MnemonicWords").gameObject.SetActive(false);
@@ -118,7 +119,7 @@ public class Account : MonoBehaviour
         SaveJSONOnDisk();
 
         Canvas.SetActive(false);
-        LobbyManager.instance.Activate("Account", CreateBlocky());
+        //LobbyManager.instance.Activate("Account", CreateBlocky());
 
         //Loader.instance.StopLoad();
     }
@@ -191,7 +192,7 @@ public class Account : MonoBehaviour
             File.Delete(Application.persistentDataPath + "/keystore.ks");
         }
 
-        LobbyManager.instance.Canvas.SetActive(false);
+        //LobbyManager.instance.Canvas.SetActive(false);
         Canvas.SetActive(true);
         Canvas.transform.Find("LinkMethod").gameObject.SetActive(true);
         Canvas.transform.Find("MnemonicWords").gameObject.SetActive(false);
