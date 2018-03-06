@@ -37,6 +37,7 @@ public class Account : MonoBehaviour
     private string _url = "https://ropsten.infura.io";
 
     private NexiumContract m_nexiumContract = new NexiumContract();
+    private BoostContract m_boostContract = new BoostContract();
     private GeneshipsContract m_geneshipsContract = new GeneshipsContract();
     private SpaceMMContract m_spaceMMContract = new SpaceMMContract();
 
@@ -77,7 +78,8 @@ public class Account : MonoBehaviour
             if (RetrieveAddressFromKeystore())
             {
                 // OK
-                GetNexiumBalance();
+                // Debug.Log(accountAddress);
+                GetBoost();
                 Canvas.SetActive(false);
                 //LobbyManager.instance.Activate("Account", CreateBlocky());
             }
@@ -668,4 +670,92 @@ public class Account : MonoBehaviour
     }
     #endregion
 
+    #region Boost
+    public void GetBoost()
+    {
+        // StartCoroutine(BoostGetRetrieveCost());
+        StartCoroutine(BoostGetNumberOfBoost());
+        // StartCoroutine(BoostChangeModify());
+    }
+
+    IEnumerator BoostGetRetrieveCost()
+    {
+        var BoostRequest = new EthCallUnityRequest(_url);
+        var boostContractFunction = m_boostContract.Create_Call_Cost("1");
+
+        yield return BoostRequest.SendRequest(boostContractFunction, Nethereum.RPC.Eth.DTOs.BlockParameter.CreateLatest());
+
+        // Now we check if the request has an exception
+        if (BoostRequest.Exception == null)
+        {
+            int owner = m_boostContract.Get_Cost(BoostRequest.Result);
+
+            Debug.Log(owner);
+        }
+        else
+        {
+            // If there was an error we just throw an exception.
+            throw new InvalidOperationException("Get boost request failed");
+        }
+    }
+
+    IEnumerator BoostGetNumberOfBoost()
+    {
+        var BoostRequest = new EthCallUnityRequest(_url);
+        
+        var boostContractFunction = m_boostContract.Create_Call_PlayerNumberOfBoost(accountAddress);
+
+        yield return BoostRequest.SendRequest(boostContractFunction, Nethereum.RPC.Eth.DTOs.BlockParameter.CreateLatest());
+        
+        // Now we check if the request has an exception
+        if (BoostRequest.Exception == null)
+        {
+            var numberOfBoost = m_boostContract.Get_PlayerOfBoost(BoostRequest.Result);
+            Debug.Log(numberOfBoost);
+        }
+        else
+        {
+            // If there was an error we just throw an exception.
+            throw new InvalidOperationException("Get player Number of boost request failed");
+        }
+
+    }
+
+    IEnumerator BoostChangeModify()
+    {
+        string accountPrivateKey = GetPrivateKeyFromKeystore(Password.text);
+
+        if (accountPrivateKey == "")
+        {
+            yield break;
+        }
+
+        int idBoost = 1;
+        int costBoost = 666;
+
+        var transactionInput = m_boostContract.Create_BoostOrModify(
+            idBoost,
+            costBoost,
+            accountAddress,
+            new HexBigInteger(20000),
+            new HexBigInteger(10),
+            new HexBigInteger(0)
+        );
+
+        var transactionSignedRequest = new TransactionSignedUnityRequest(_url, accountPrivateKey, accountAddress);
+
+        yield return transactionSignedRequest.SignAndSendTransaction(transactionInput);
+
+        if (transactionSignedRequest.Exception == null)
+        {
+            // If we don't have exceptions we just display the result, congrats!
+            Debug.Log("Nexium approve submitted: " + transactionSignedRequest.Result);
+        }
+        else
+        {
+            // if we had an error in the UnityRequest we just display the Exception error
+            Debug.Log("Error submitting Nexium approve: " + transactionSignedRequest.Exception.Message);
+        }
+    }
+    #endregion
 }
