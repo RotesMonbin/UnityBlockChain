@@ -266,5 +266,24 @@ public class AccountExample : MonoBehaviour
         }
     }
     #endregion
-    
+
+    #region event 
+    public IEnumerator getEventRequest()
+    {
+        var getRequest = new EthGetLogsUnityRequest(_url);
+        var getInput = m_nameContract.Create_Input_Event();
+        Debug.Log("Checking event...");
+        yield return getRequest.SendRequest(getInput);
+        if (getRequest.Exception == null)
+        {
+            Debug.Log("Event: " + getRequest.Result);
+        }
+        else
+        {
+            Debug.Log("Error getting event: " + getRequest.Exception.Message);
+        }
+    }
+
+    #endregion
+
 }

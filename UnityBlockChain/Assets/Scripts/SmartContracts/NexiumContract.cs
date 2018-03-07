@@ -2,10 +2,6 @@
 using Nethereum.RPC.Eth.DTOs;
 using System.Numerics;
 using Nethereum.Hex.HexTypes;
-using Nethereum.ABI.Encoders;
-using Nethereum.Signer;
-using Nethereum.Hex.HexConvertors.Extensions;
-using UnityEngine;
 
 
 public class NexiumContract
@@ -285,7 +281,7 @@ public class NexiumContract
     
     // We define the contract address here
     // (Remember this contract is deployed on the ropsten network)
-    private static string contractAddress = "0x5f8514183699e7aa8139ad8740b7f920a33b2e10";
+    private static string contractAddress = "0xab904d9c85388653e6fb1c75b41fbc0465d39b90";
 
     // We define a new contract (Netherum.Contracts)
     private Contract contract;
@@ -338,6 +334,24 @@ public class NexiumContract
     {
         var function = Get_approve_Function();
         return function.CreateTransactionInput(addressFrom, gas, gasPrice, valueAmount, spender, value);
+    }
+    #endregion
+
+
+    #region event - Transfer
+    public Nethereum.Contracts.Event GetTransfertEvent()
+    {
+        return contract.GetEvent("Transfer");
+    }
+
+
+    public NewFilterInput CreateTransferInput()
+    {
+        var evt = GetTransfertEvent();
+        // for this event, when creating the input, we need to define the blockFrom and the blockTo parameters.
+        // we send the first block and the last block in this case, so we retrieve the transfert event
+        // transactions in all the blocks
+        return evt.CreateFilterInput(Nethereum.RPC.Eth.DTOs.BlockParameter.CreateEarliest(), Nethereum.RPC.Eth.DTOs.BlockParameter.CreateLatest());
     }
     #endregion
 }
