@@ -674,7 +674,7 @@ public class Account : MonoBehaviour
     public void GetBoost()
     {
         // StartCoroutine(BoostGetRetrieveCost());
-        StartCoroutine(BoostGetNumberOfBoost());
+        // StartCoroutine(BoostGetNumberOfBoost());
         // StartCoroutine(BoostChangeModify());
     }
 

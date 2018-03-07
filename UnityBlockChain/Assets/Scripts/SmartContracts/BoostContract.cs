@@ -13,7 +13,6 @@ using Nethereum.Hex.HexConvertors.Extensions;
 using Nethereum.ABI.FunctionEncoding.Attributes;
 
 public class BoostContract {
-    string output;
 
     #region ABI
     // We define the ABI of the contract we are going to use.
