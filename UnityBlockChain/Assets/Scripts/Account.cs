@@ -40,6 +40,7 @@ public class Account : MonoBehaviour
     private BoostContract m_boostContract = new BoostContract();
     private GeneshipsContract m_geneshipsContract = new GeneshipsContract();
     private SpaceMMContract m_spaceMMContract = new SpaceMMContract();
+    private PingTokenContractService pingTokenContractService = new PingTokenContractService();
 
 #if UNITY_WEBGL
     [DllImport("__Internal")]
@@ -673,8 +674,15 @@ public class Account : MonoBehaviour
     public void GetBoost()
     {
         // StartCoroutine(BoostGetRetrieveCost());
-        StartCoroutine(BoostGetNumberOfBoost());
+        // StartCoroutine(BoostGetNumberOfBoost());
         // StartCoroutine(BoostChangeModify());
+        //StartCoroutine(getTransferEventRequest());
+
+        //checkMyBalance();
+         checkPings();
+         //ping();
+        // transferBalance();
+        //checkPongEvent();
     }
 
     IEnumerator BoostGetRetrieveCost()
@@ -702,7 +710,7 @@ public class Account : MonoBehaviour
     {
         var BoostRequest = new EthCallUnityRequest(_url);
         
-        var boostContractFunction = m_boostContract.Create_Call_PlayerNumberOfBoost(accountAddress);
+        var boostContractFunction = m_boostContract.Create_Call_PlayerNumberOfBoost(accountAddress, 1);
 
         yield return BoostRequest.SendRequest(boostContractFunction, Nethereum.RPC.Eth.DTOs.BlockParameter.CreateLatest());
         
@@ -757,4 +765,234 @@ public class Account : MonoBehaviour
         }
     }
     #endregion
+
+
+    #region event nexium 
+    public IEnumerator getTransferEventRequest()
+    {
+        var getTransferRequest = new EthGetLogsUnityRequest(_url);
+        var getTransferInput = m_nexiumContract.CreateTransferInput();
+        Debug.Log("Checking transfer event...");
+        yield return getTransferRequest.SendRequest(getTransferInput);
+        if (getTransferRequest.Exception == null)
+        {
+            Debug.Log("transfert Event: " + getTransferRequest.Result);
+        }
+        else
+        {
+            Debug.Log("Error getting transfer event: " + getTransferRequest.Exception.Message);
+        }
+    }
+
+    #endregion
+
+
+    public void checkMyBalance()
+    {
+        // we create a new balance request, sending the address we want to check
+        // in this case we use our public address
+        StartCoroutine(getBalanceOfRequest(accountAddress));
+    }
+    public void checkPings()
+    {
+        StartCoroutine(getPingsRequest());
+    }
+    public void checkPongEvent()
+    {
+        StartCoroutine(getPongEventRequest());
+    }
+    public void ping()
+    {
+        StartCoroutine(pingRequest());
+    }
+    public void transferBalance()
+    {
+        // we create a coroutine to start a transfer request, and we send
+        // the receiver address and the quantity of ping tokens we want to transfer
+        // converted to wei units, in this case we send 2010 tokens
+        StartCoroutine(transferToRequest(accountAddress, Nethereum.Util.UnitConversion.Convert.ToWei(2010)));
+    }
+
+    // we are going to use this function, to call the CheckTransactionReceiptIsMined() function
+    // we created in the pingTokenService class, this will trigger every 10 seconds until
+    // the transaction hash we sent is mined, throws an error or tries 999 times (just for testing)
+    public void checkTx(string txHash, Action<bool> callback)
+    {
+        StartCoroutine(pingTokenContractService.CheckTransactionReceiptIsMined(
+            _url,
+            txHash,
+            (cb) => {
+                Debug.Log("The transaction has been mined succesfully");
+                // we send a callback to the function, here you can add some more logic if you wish
+                callback(true);
+            }
+        ));
+    }
+
+    // here we define all the IEnumerator functions for the requests
+    // Basically, the requests needs two things
+    // First, a request, EthCallUnityRequest for calls,
+    // EthGetLogsUnityRequest for events, and TransactionSignedUnityRequest for transactions), 
+    // Second, an input, we created it in the pingTokenService for each case.
+    // After that, we just yield return the request, sending the input and
+    // the block you want to check (depending on what we are doing)
+
+    public IEnumerator getBalanceOfRequest(string address)
+    {
+        var getBalanceRequest = new EthCallUnityRequest(_url);
+        var getBalanceInput = pingTokenContractService.CreateBalanceOfInput(address);
+        Debug.Log("Getting balance of: " + address);
+        yield return getBalanceRequest.SendRequest(getBalanceInput, Nethereum.RPC.Eth.DTOs.BlockParameter.CreateLatest());
+        if (getBalanceRequest.Exception == null)
+        {
+            // So, basically this is the same for all the requests, if we have no exception
+            // we decode (if needed) the result, and if we have an exception we show 
+            // the exception message
+            Debug.Log("Balance: " + pingTokenContractService.DecodeBalance(getBalanceRequest.Result));
+        }
+        else
+        {
+            Debug.Log("Error getting balance: " + getBalanceRequest.Exception.Message);
+        }
+    }
+
+    public IEnumerator getPingsRequest()
+    {
+        var getPingsRequest = new EthCallUnityRequest(_url);
+        var getPingsInput = pingTokenContractService.CreatePingsInput();
+        Debug.Log("Getting pings...");
+        yield return getPingsRequest.SendRequest(getPingsInput, Nethereum.RPC.Eth.DTOs.BlockParameter.CreateLatest());
+        if (getPingsRequest.Exception == null)
+        {
+            Debug.Log("Pings: " + pingTokenContractService.DecodePings(getPingsRequest.Result));
+        }
+        else
+        {
+            Debug.Log("Error getting pings: " + getPingsRequest.Exception.Message);
+        }
+    }
+
+    public IEnumerator getPongEventRequest()
+    {
+        var getPongRequest = new EthGetLogsUnityRequest(_url);
+        var getPongInput = pingTokenContractService.CreatePongInput();
+        Debug.Log("Checking pong event...");
+        yield return getPongRequest.SendRequest(getPongInput);
+        if (getPongRequest.Exception == null)
+        {
+            Debug.Log("Pong Event: " + getPongRequest.Result);
+        }
+        else
+        {
+            Debug.Log("Error getting pong event: " + getPongRequest.Exception.Message);
+        }
+    }
+
+    public IEnumerator pingRequest()
+    {
+        // since the ping request is a transaction we need to set gas (80000)
+        // gas price (79) and the eth we are going to send (0)
+        // (these are just testing values)
+        var transactionInput = pingTokenContractService.CreatePingInput(
+            accountAddress,
+            new HexBigInteger(80000),
+            new HexBigInteger(79),
+            new HexBigInteger(0)
+        );
+        var transactionSignedRequest = new TransactionSignedUnityRequest(_url, accountAddress, accountAddress);
+        Debug.Log("Ping transaction being submitted..");
+        yield return transactionSignedRequest.SignAndSendTransaction(transactionInput);
+        if (transactionSignedRequest.Exception == null)
+        {
+            Debug.Log("Ping tx created: " + transactionSignedRequest.Result);
+            // Here, after the ping request succeeds, we call checkTx(), and
+            // we send the transaction Hash (the result of the ping request),
+            // and a callback, this will trigger when the tx type == 'mined'
+            checkTx(transactionSignedRequest.Result, (cb) => {
+                // here you can add some more logic to trigger after the tx is mined in the blockchain
+            });
+        }
+        else
+        {
+            Debug.Log("Error submitting Ping: " + transactionSignedRequest.Exception.Message);
+        }
+    }
+
+    public IEnumerator transferToRequest(string address, BigInteger value)
+    {
+        // Here we create a transferInput, we send our address, the address
+        // we are going to send tokens to, how many tokens we are going to send,
+        // the gas amount, the gas price, and the amount of eth to send.
+        // In this case, we dont send eth, and we set a high gas price and gas amount
+        // just for testing purposes in the testnet
+        var transactionInput = pingTokenContractService.CreateTransferInput(
+            accountAddress,
+            address,
+            value,
+            new HexBigInteger(200000),
+            new HexBigInteger(190),
+            new HexBigInteger(0)
+        );
+        Debug.Log("Transfering tokens to: " + address);
+        var transactionSignedRequest = new TransactionSignedUnityRequest(_url, accountAddress, accountAddress);
+        yield return transactionSignedRequest.SignAndSendTransaction(transactionInput);
+        if (transactionSignedRequest.Exception == null)
+        {
+            Debug.Log("Transfered tx created: " + transactionSignedRequest.Result);
+            // Now we check the transaction until it's mined in the blockchain as we did in
+            // the pingRequest, when the callback is triggered (transaction mined),
+            // we execute the getBalanceRequest for the address we send tokens to
+            checkTx(transactionSignedRequest.Result, (cb) => {
+                StartCoroutine(getBalanceOfRequest(address));
+            });
+        }
+        else
+        {
+            Debug.Log("Error transfering tokens: " + transactionSignedRequest.Exception.Message);
+        }
+    }
+
+
+    public void deployEthereumContract()
+    {
+        print("Deploying contract...");
+
+        // Here we have our ABI & bytecode required for both creating and accessing our contract.
+        var abi = @"[{""constant"":true,""inputs"":[],""name"":""name"",""outputs"":[{""name"":"""",""type"":""string""}],""payable"":false,""stateMutability"":""view"",""type"":""function""},{""constant"":true,""inputs"":[],""name"":""totalSupply"",""outputs"":[{""name"":"""",""type"":""uint256""}],""payable"":false,""stateMutability"":""view"",""type"":""function""},{""constant"":true,""inputs"":[],""name"":""pings"",""outputs"":[{""name"":"""",""type"":""uint256""}],""payable"":false,""stateMutability"":""view"",""type"":""function""},{""constant"":true,""inputs"":[],""name"":""INITIAL_SUPPLY"",""outputs"":[{""name"":"""",""type"":""uint256""}],""payable"":false,""stateMutability"":""view"",""type"":""function""},{""constant"":true,""inputs"":[],""name"":""decimals"",""outputs"":[{""name"":"""",""type"":""uint8""}],""payable"":false,""stateMutability"":""view"",""type"":""function""},{""constant"":false,""inputs"":[],""name"":""ping"",""outputs"":[{""name"":"""",""type"":""uint256""}],""payable"":false,""stateMutability"":""nonpayable"",""type"":""function""},{""constant"":true,""inputs"":[{""name"":""_owner"",""type"":""address""}],""name"":""balanceOf"",""outputs"":[{""name"":""balance"",""type"":""uint256""}],""payable"":false,""stateMutability"":""view"",""type"":""function""},{""constant"":true,""inputs"":[],""name"":""symbol"",""outputs"":[{""name"":"""",""type"":""string""}],""payable"":false,""stateMutability"":""view"",""type"":""function""},{""constant"":false,""inputs"":[{""name"":""_to"",""type"":""address""},{""name"":""_value"",""type"":""uint256""}],""name"":""transfer"",""outputs"":[{""name"":"""",""type"":""bool""}],""payable"":false,""stateMutability"":""nonpayable"",""type"":""function""},{""inputs"":[],""payable"":false,""stateMutability"":""nonpayable"",""type"":""constructor""},{""anonymous"":false,""inputs"":[{""indexed"":false,""name"":""pong"",""type"":""uint256""}],""name"":""Pong"",""type"":""event""},{""anonymous"":false,""inputs"":[{""indexed"":true,""name"":""from"",""type"":""address""},{""indexed"":true,""name"":""to"",""type"":""address""},{""indexed"":false,""name"":""value"",""type"":""uint256""}],""name"":""Transfer"",""type"":""event""}]";
+        var byteCode = @"6060604052341561000f57600080fd5b601260ff16600a0a6305f5e10002600181905550601260ff16600a0a6305f5e10002600260003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000208190555061074f806100836000396000f300606060405260043610610099576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806306fdde031461009e57806318160ddd1461012c5780631e81ccb2146101555780632ff2e9dc1461017e578063313ce567146101a75780635c36b186146101d657806370a08231146101ff57806395d89b411461024c578063a9059cbb146102da575b600080fd5b34156100a957600080fd5b6100b1610334565b6040518080602001828103825283818151815260200191508051906020019080838360005b838110156100f15780820151818401526020810190506100d6565b50505050905090810190601f16801561011e5780820380516001836020036101000a031916815260200191505b509250505060405180910390f35b341561013757600080fd5b61013f61036d565b6040518082815260200191505060405180910390f35b341561016057600080fd5b610168610373565b6040518082815260200191505060405180910390f35b341561018957600080fd5b610191610379565b6040518082815260200191505060405180910390f35b34156101b257600080fd5b6101ba61038a565b604051808260ff1660ff16815260200191505060405180910390f35b34156101e157600080fd5b6101e961038f565b6040518082815260200191505060405180910390f35b341561020a57600080fd5b610236600480803573ffffffffffffffffffffffffffffffffffffffff1690602001909190505061049d565b6040518082815260200191505060405180910390f35b341561025757600080fd5b61025f6104e6565b6040518080602001828103825283818151815260200191508051906020019080838360005b8381101561029f578082015181840152602081019050610284565b50505050905090810190601f1680156102cc5780820380516001836020036101000a031916815260200191505b509250505060405180910390f35b34156102e557600080fd5b61031a600480803573ffffffffffffffffffffffffffffffffffffffff1690602001909190803590602001909190505061051f565b604051808215151515815260200191505060405180910390f35b6040805190810160405280600981526020017f50696e67546f6b656e000000000000000000000000000000000000000000000081525081565b60015481565b60005481565b601260ff16600a0a6305f5e1000281565b601281565b600080601260ff16600a0a6001029050600260003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000205481111515156103ed57600080fd5b8060016000828254039250508190555080600260003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000206000828254039250508190555060008081548092919060010191905055507f58b69f57828e6962d216502094c54f6562f3bf082ba758966c3454f9e37b15256000546040518082815260200191505060405180910390a160005491505090565b6000600260008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020549050919050565b6040805190810160405280600481526020017f50494e470000000000000000000000000000000000000000000000000000000081525081565b60008073ffffffffffffffffffffffffffffffffffffffff168373ffffffffffffffffffffffffffffffffffffffff161415151561055c57600080fd5b600260003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000205482111515156105aa57600080fd5b81600260003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000205403600260003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000208190555081600260008573ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000205401600260008573ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020819055508273ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff167fddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef846040518082815260200191505060405180910390a360019050929150505600a165627a7a72305820de8fe20456e277e097051eb40a1239d02fd93b0f5e435de8208865c1a7ebaf890029";
+
+        StartCoroutine(deployContract(abi, byteCode, accountAddress, (result) => {
+            print("Result " + result);
+        }));
+
+    }
+
+
+    public IEnumerator deployContract(string abi, string byteCode, string senderAddress, System.Action<string> callback)
+    {
+        // Ammount of gas required to create the contract
+        var gas = new HexBigInteger(900000);
+        throw new System.InvalidOperationException("Deploy contract tx failed:");
+        // First we build the transaction
+        /*var transactionInput = contractTransactionBuilder.BuildTransaction(abi, byteCode, senderAddress, gas, null);
+
+        // Here we create a new signed transaction Unity Request with the url, the private and public key
+        // (this will sign the transaction automatically)
+        var transactionSignedRequest = new TransactionSignedUnityRequest(_url, accountAddress, accountAddress);
+
+        // Then we send the request and wait for the transaction hash
+        Debug.Log("Sending Deploy contract transaction...");
+        yield return transactionSignedRequest.SignAndSendTransaction(transactionInput);
+        if (transactionSignedRequest.Exception == null)
+        {
+            // If we don't have exceptions we just return the result!
+            callback(transactionSignedRequest.Result);
+        }
+        else
+        {
+            // if we had an error in the UnityRequest we just display the Exception error
+            throw new System.InvalidOperationException("Deploy contract tx failed:" + transactionSignedRequest.Exception.Message);
+        }*/
+    }
+
 }

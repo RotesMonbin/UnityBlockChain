@@ -13,7 +13,6 @@ using Nethereum.Hex.HexConvertors.Extensions;
 using Nethereum.ABI.FunctionEncoding.Attributes;
 
 public class BoostContract {
-    string output;
 
     #region ABI
     // We define the ABI of the contract we are going to use.
@@ -171,6 +170,7 @@ public class BoostContract {
     public Function Get_Cost_Function()
     {
         return contract.GetFunction("retrieveCost");
+     
     }
 
     public CallInput Create_Call_Cost(string id)
@@ -195,11 +195,11 @@ public class BoostContract {
         return contract.GetFunction("playerNumberOfBoost");
     }
 
-    public CallInput Create_Call_PlayerNumberOfBoost(string adresse)
+    public CallInput Create_Call_PlayerNumberOfBoost(string adresse, int idBoost)
     {
         var function = Get_PlayerNumberBoost_Function();
-
-        return function.CreateCallInput(adresse);
+        object[] array = new[] { adresse, idBoost.ToString() };
+        return function.CreateCallInput(array);
     }
 
     public int Get_PlayerOfBoost(string numberOfBoost)
@@ -228,4 +228,6 @@ public class BoostContract {
         return function.CreateTransactionInput(addressFrom, gas, gasPrice, valueAmount, idBoost, costBoost);
     }
     #endregion
+
+
 }
