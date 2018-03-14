@@ -285,7 +285,7 @@ public class NexiumContract
     
     // We define the contract address here
     // (Remember this contract is deployed on the ropsten network)
-    private static string contractAddress = "0x5f8514183699e7aa8139ad8740b7f920a33b2e10";
+    internal static string contractAddress = "0x5f8514183699e7aa8139ad8740b7f920a33b2e10";
 
     // We define a new contract (Netherum.Contracts)
     private Contract contract;
@@ -329,7 +329,6 @@ public class NexiumContract
     // and the valueAmount in ETH to send to this contract.
     // IMPORTANT: the PingContract doesn't accept eth transfers so this must be 0 or it will throw an error.
     string addressFrom,
-    string privateKey,
     string spender,
     BigInteger value,
     HexBigInteger gas = null,

@@ -308,7 +308,6 @@ public class Account : MonoBehaviour
 
         var transactionInput = m_nexiumContract.Create_approve_TransactionInput(
             accountAddress,
-            accountPrivateKey,
             spender,
             value,
             new HexBigInteger(20000),
