@@ -12,6 +12,7 @@ using System.Numerics;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using ETH_Identicons;
+using System.Runtime.InteropServices;
 
 public class AccountExample : MonoBehaviour
 {
